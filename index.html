@@ -140,7 +140,7 @@ body{font-family:var(--ar);background:var(--bg);color:var(--text);min-height:100
   padding:1.25rem;
   font-size:15px;
   line-height:2.2;
-  color:var(--text2);
+  color:var(--text);
   min-height:80px;
   border-right:2px solid var(--cy2);
   word-break:break-word;
@@ -243,7 +243,7 @@ body{font-family:var(--ar);background:var(--bg);color:var(--text);min-height:100
     <div class="logo-title">DC MOTOR <span>FLEET</span></div>
     <div class="logo-sub">Health Index - 18 DC Motors Monitoring System</div>
   </div>
-  <span class="vtag">v4.0</span>
+  <span class="vtag">v5.0</span>
 </div>
 
 <!-- API KEY -->
@@ -370,7 +370,16 @@ body{font-family:var(--ar);background:var(--bg);color:var(--text);min-height:100
     </div>
     <!-- AI -->
     <div class="card" id="aiCard">
-      <div class="ctitle">التشخيص الهندسي - ذكاء اصطناعي</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
+        <div class="ctitle" style="margin-bottom:0">التشخيص الهندسي - ذكاء اصطناعي</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span id="aiSavedBadge" style="display:none;font-family:var(--mn);font-size:10px;padding:3px 9px;border-radius:var(--rs);border:0.5px solid;font-weight:600;transition:all .3s"></span>
+          <div id="aiSavedWrap" style="display:none;align-items:center;gap:8px">
+            <span id="aiSavedInfo" style="font-size:11px;color:var(--text2)"></span>
+            <button onclick="loadSavedReport()" style="font-family:var(--ar);font-size:11px;font-weight:600;padding:5px 12px;border-radius:var(--rs);border:0.5px solid var(--cy2);background:var(--cy-bg);color:var(--cy);cursor:pointer">عرض المحفوظ</button>
+          </div>
+        </div>
+      </div>
       <!-- Copy-paste section (shown when file:// detected) -->
       <div id="cpSection" style="display:none;background:var(--bl-bg);border:0.5px solid var(--bl);border-radius:var(--rs);padding:1rem;margin-bottom:1rem">
         <div style="font-size:13px;color:var(--text);margin-bottom:10px;line-height:1.7">
@@ -459,6 +468,15 @@ body{font-family:var(--ar);background:var(--bg);color:var(--text);min-height:100
       </table>
     </div>
   </div>
+
+  <!-- AI REPORTS SAVED -->
+  <div class="card" id="aiReportsCard">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
+      <div class="ctitle" style="margin-bottom:0">تحليلات الذكاء الاصطناعي المحفوظة</div>
+      <button class="btn btn-rd" onclick="clearAIReports()" style="font-size:11px;padding:5px 12px">مسح التحليلات</button>
+    </div>
+    <div id="aiReportsList"></div>
+  </div>
 </div>
 
 <!-- MODAL -->
@@ -469,7 +487,7 @@ body{font-family:var(--ar);background:var(--bg);color:var(--text);min-height:100
   </div>
 </div>
 
-<div class="footer">DC MOTOR FLEET v4.0 - Health Index Monitoring - IEC 60034-1 - ISO 10816 - NEMA MG1</div>
+<div class="footer">DC MOTOR FLEET v5.0 - Health Index Monitoring - IEC 60034-1 - ISO 10816 - NEMA MG1</div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -498,6 +516,74 @@ var selIdx = 0;
 var apiKey = localStorage.getItem('fleet_key') || localStorage.getItem('fleet_api_key') || '';
 var csvRows = [], csvHdr = [], charts = {};
 var HIST = JSON.parse(localStorage.getItem('fleet_hist') || '[]');
+var AI_REPORTS = JSON.parse(localStorage.getItem('fleet_ai_reports') || '[]');
+
+/* SAVE AI REPORT */
+function saveAIReport(motorId, motorName, hi, grade_lbl, text) {
+  var report = {
+    motorId: motorId,
+    motorName: motorName,
+    hi: hi,
+    grade: grade_lbl,
+    text: text,
+    ts: Date.now()
+  };
+  // keep latest per motor (replace if exists today, else prepend)
+  var today = new Date().toDateString();
+  var idx = AI_REPORTS.findIndex(function(r) {
+    return r.motorId === motorId && new Date(r.ts).toDateString() === today;
+  });
+  if (idx >= 0) { AI_REPORTS[idx] = report; }
+  else { AI_REPORTS.unshift(report); }
+  if (AI_REPORTS.length > 200) AI_REPORTS.splice(200);
+  localStorage.setItem('fleet_ai_reports', JSON.stringify(AI_REPORTS));
+}
+
+/* LOAD SAVED AI REPORT FOR A MOTOR */
+function getLatestAIReport(motorId) {
+  return AI_REPORTS.find(function(r){ return r.motorId === motorId; }) || null;
+}
+
+/* SHOW SAVED BADGE after saving */
+function showSavedBadge() {
+  var badge = document.getElementById('aiSavedBadge');
+  if (!badge) return;
+  badge.style.display = 'inline-block';
+  badge.textContent = '✓ تم الحفظ';
+  badge.style.color = 'var(--gr)';
+  badge.style.borderColor = 'var(--gr)';
+  badge.style.background = 'var(--gr-bg)';
+}
+
+/* SHOW SAVED REPORT BUTTON for current motor */
+function updAISavedBtn() {
+  var m = MOTORS[selIdx];
+  var rep = getLatestAIReport(m.id);
+  var wrap = document.getElementById('aiSavedWrap');
+  if (!wrap) return;
+  if (rep) {
+    var dt = new Date(rep.ts).toLocaleDateString('ar-SA', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    wrap.style.display = 'flex';
+    document.getElementById('aiSavedInfo').textContent = 'يوجد تحليل محفوظ - ' + dt;
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+/* LOAD SAVED REPORT into aiBox */
+function loadSavedReport() {
+  var m = MOTORS[selIdx];
+  var rep = getLatestAIReport(m.id);
+  if (!rep) return;
+  var box = document.getElementById('aiBox');
+  var cp  = document.getElementById('cpSection');
+  cp.style.display = 'none';
+  box.style.display = 'block';
+  box.className = 'ai-box';
+  box.innerHTML = mdRender(rep.text);
+  document.getElementById('manRes').style.display = 'block';
+  document.getElementById('manRes').scrollIntoView({ behavior:'smooth', block:'start' });
+}
 
 /* SAVE / LOAD MOTORS READINGS */
 function saveMotors() {
@@ -684,6 +770,7 @@ function selMotor(idx) {
   document.getElementById('f-vlt').value = m.volt;
   document.getElementById('f-mi').value = m.mintv;
   document.getElementById('manRes').style.display = 'none';
+  updAISavedBtn();
 }
 
 /* MANUAL CALC */
@@ -774,26 +861,19 @@ function calcManual() {
 
   var mtMap = { full:'شاملة', partial:'دورية', inspect:'فحص فقط', none:'لا يوجد' };
   var loc = (m.location && m.location !== 'undefined') ? m.location : 'MDM';
-  var prompt = [
-    'أنت مهندس متخصص في موثوقية موتورات DC. بيانات الموتور ' + m.id + ' من موقع ' + loc + ':',
-    '',
-    '- الحرارة: ' + T + '°C — مؤشر ' + Math.round(sT) + '/100',
-    '- الاهتزاز: ' + V + ' mm/s — مؤشر ' + Math.round(sV) + '/100 (ISO 10816)',
-    '- التيار: ' + I + 'A (حمل ' + lp + '%) — مؤشر ' + Math.round(sC) + '/100',
-    '- الصيانة: منذ ' + MD + ' يوم، دورية ' + mintv + ' يوم، نوع: ' + (mtMap[MT]||MT) + '، فرش: ' + (brMap[BS]||BS) + ' — مؤشر ' + Math.round(sM) + '/100',
-    '- Health Index الكلي: ' + hi + '/100 — ' + g.lbl,
-    '- القدرة: ' + pow + ' kW — الجهد: ' + volt + 'V DC',
-    '',
-    'اكتب تقريراً هندسياً شاملاً بالعربية يتضمن:',
-    '1. ملخص تنفيذي: تقييم الحالة العامة للموتور',
-    '2. تحليل مؤشر الصحة الكلي (' + hi + '/100) وتفسيره الهندسي',
-    '3. تحليل تفصيلي لكل مؤشر فرعي (الحرارة - الاهتزاز - التيار - الصيانة) مع أسباب التدهور المحتملة',
-    '4. تقييم حالة الفرش وتأثيرها على أداء الموتور وعمره الافتراضي',
-    '5. المخاطر المحتملة إن لم تُتخذ إجراءات',
-    '6. توصيات فورية مرتبة حسب الأولوية',
-    '7. جدول صيانة مقترح مع المواعيد والأعمال المطلوبة',
-    'كن دقيقاً وتفصيلياً في كل نقطة.'
-  ].join('\n');
+  var prompt = 
+'انت مهندس متخصص في موثوقية موتورات DC. بيانات الموتور ' + m.id + ' (' + m.name + ') من ' + m.location + ':\n\n' +
+    '- الحرارة: ' + T + ' - مؤشر ' + Math.round(sT) + '/100\n' +
+    '- الاهتزاز: ' + V + ' mm/s - مؤشر ' + Math.round(sV) + '/100\n' +
+    '- التيار: ' + I + 'A (حمل ' + lp + '%) - مؤشر ' + Math.round(sC) + '/100\n' +
+    '- الصيانة: منذ ' + MD + ' يوم (دورية ' + mintv + ' يوم، نوع: ' + (mtMap[MT]||MT) + '، فرش: ' + (brMap[BS]||BS) + ') - مؤشر ' + Math.round(sM) + '/100\n' +
+    '- Health Index: ' + hi + '/100 - ' + g.lbl + '\n\n' +
+    'اكتب تقريرا هندسيا خاصا بموتور DC يشمل:\n' +
+    '1. تفسير Health Index (' + hi + '/100)\n' +
+    '2. تحليل كل مؤشر فرعي\n' +
+    '3. تقييم حالة الفرش وتاثيرها\n' +
+    '4. توصيات فورية وجدول صيانة\n' +
+    'الرد بالعربية.';
 
   var key = localStorage.getItem('fleet_key') || localStorage.getItem('fleet_api_key') || apiKey;
   if (!key) {
@@ -802,7 +882,8 @@ function calcManual() {
     return;
   }
   apiKey = key;
-  callAPI(prompt, key);
+  var motorCtx = { motorId: m.id, motorName: m.name, hi: hi, grade: g.lbl };
+  callAPI(prompt, key, motorCtx);
 }
 
 /* ---- MARKDOWN RENDERER ---- */
@@ -893,7 +974,7 @@ function showCopyPaste(prompt) {
   document.getElementById('cpPromptTA').value = prompt;
 }
 
-function callAPI(prompt, key) {
+function callAPI(prompt, key, motorCtx) {
   var box = document.getElementById('aiBox');
   var cp  = document.getElementById('cpSection');
 
@@ -922,6 +1003,11 @@ function callAPI(prompt, key) {
     box.className = 'ai-box';
     box.innerHTML = mdRender(fullText);
     box.scrollTop = 0;
+    // --- حفظ التحليل في localStorage ---
+    if (motorCtx && fullText) {
+      saveAIReport(motorCtx.motorId, motorCtx.motorName, motorCtx.hi, motorCtx.grade, fullText);
+      showSavedBadge();
+    }
   }
 
   function xhrFallback() {
@@ -1020,9 +1106,17 @@ function cpApply() {
   var txt = document.getElementById('cpResultTA').value.trim();
   if (!txt) { alert('الصق الرد اولا'); return; }
   var box = document.getElementById('aiBox');
-  box.textContent = txt;
+  box.innerHTML = mdRender(txt);
   box.style.display = 'block';
   document.getElementById('cpSection').style.display = 'none';
+  // حفظ التحليل
+  var m = MOTORS[selIdx];
+  var last = m.readings.length ? m.readings[m.readings.length-1] : null;
+  if (last) {
+    var g = grade(last.hi);
+    saveAIReport(m.id, m.name, last.hi, g.lbl, txt);
+    showSavedBadge();
+  }
 }
 
 /* PRINT */
@@ -1235,6 +1329,7 @@ function renderHist() {
     html += '</tr>';
   });
   document.getElementById('histBody').innerHTML = html || '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:2rem">لا توجد قراءات</td></tr>';
+  renderAIReports();
 }
 function clearAll() {
   if (!confirm('مسح جميع قراءات الموتورات والسجل التاريخي؟')) return;
@@ -1243,6 +1338,55 @@ function clearAll() {
   localStorage.removeItem('fleet_motors');
   localStorage.removeItem('fleet_hist');
   buildDash(); updHistFlt();
+}
+
+/* AI REPORTS */
+function renderAIReports() {
+  var wrap = document.getElementById('aiReportsList');
+  if (!wrap) return;
+  if (!AI_REPORTS.length) {
+    wrap.innerHTML = '<div style="text-align:center;color:var(--text3);padding:2rem;font-size:13px">لا توجد تحليلات محفوظة</div>';
+    return;
+  }
+  var html = '';
+  AI_REPORTS.forEach(function(rep, idx) {
+    var g = grade(rep.hi);
+    var dt = new Date(rep.ts).toLocaleDateString('ar-SA', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    html += '<div style="background:var(--bg3);border:0.5px solid var(--brd);border-radius:var(--r);margin-bottom:10px;overflow:hidden">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;gap:10px;flex-wrap:wrap" onclick="toggleAIReport(\'air_' + idx + '\')">';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<span style="font-family:var(--mn);font-size:22px;font-weight:600;color:' + g.clr + '">' + rep.hi + '</span>';
+    html += '<div><div style="font-size:13px;font-weight:700;color:var(--text)">' + rep.motorId + ' - ' + rep.motorName + '</div>';
+    html += '<div style="font-size:11px;color:var(--text2);margin-top:2px">' + dt + '</div></div>';
+    html += '</div>';
+    html += '<div style="display:flex;align-items:center;gap:8px">';
+    html += '<span style="font-family:var(--mn);font-size:10px;padding:3px 8px;border-radius:var(--rs);background:' + g.bg + ';color:' + g.tc + ';border:0.5px solid ' + g.clr + '">' + g.lbl + '</span>';
+    html += '<button onclick="event.stopPropagation();deleteAIReport(' + idx + ')" style="font-family:var(--mn);font-size:10px;padding:3px 8px;border-radius:var(--rs);border:0.5px solid var(--rd);background:var(--rd-bg);color:var(--rd);cursor:pointer">حذف</button>';
+    html += '<span style="font-family:var(--mn);font-size:11px;color:var(--text3)">▼</span>';
+    html += '</div></div>';
+    html += '<div id="air_' + idx + '" style="display:none;padding:14px;border-top:0.5px solid var(--brd);direction:rtl">';
+    html += '<div class="ai-box" style="display:block;border:none;padding:0;background:transparent">' + mdRender(rep.text) + '</div>';
+    html += '</div>';
+    html += '</div>';
+  });
+  wrap.innerHTML = html;
+}
+function toggleAIReport(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function deleteAIReport(idx) {
+  if (!confirm('حذف هذا التحليل؟')) return;
+  AI_REPORTS.splice(idx, 1);
+  localStorage.setItem('fleet_ai_reports', JSON.stringify(AI_REPORTS));
+  renderAIReports();
+}
+function clearAIReports() {
+  if (!confirm('مسح جميع تحليلات الذكاء الاصطناعي المحفوظة؟')) return;
+  AI_REPORTS.splice(0);
+  localStorage.removeItem('fleet_ai_reports');
+  renderAIReports();
 }
 function clearHist() {
   if (!confirm('مسح كل السجل؟')) return;
