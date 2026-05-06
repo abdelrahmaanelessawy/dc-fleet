@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DC Motor Fleet - Health Index</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090F;--bg2:#0C111A;--bg3:#131C28;--bg4:#1A2436;
+  --text:#C0D0E8;--text2:#6878A0;--text3:#3C4C64;
+  --brd:#1C2A3C;--brd2:#243650;
+  --cy:#00BFFF;--cy2:#0090CC;--cy-bg:#00BFFF11;
+  --gr:#00D98A;--gr-bg:#00D98A11;--gr-tc:#004428;
+  --am:#FFA820;--am-bg:#FFA82011;--am-tc:#2A1800;
+  --rd:#FF3D4E;--rd-bg:#FF3D4E11;--rd-tc:#200408;
+  --bl:#4A78FF;--bl-bg:#4A78FF11;
+  --r:8px;--rs:4px;
+  --ar:'Tajawal',sans-serif;
+  --mn:'IBM Plex Mono',monospace;
+}
+body{font-family:var(--ar);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:clip}
+.wrap{max-width:1080px;margin:0 auto;padding:1.25rem 1rem}
+
+/* ---- TOP BAR ---- */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.75rem;padding-bottom:1rem;border-bottom:0.5px solid var(--brd2)}
+.logo-title{font-size:18px;font-weight:800;color:var(--text)}
+.logo-title span{color:var(--cy)}
+.logo-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.vtag{font-family:var(--mn);font-size:10px;color:var(--cy);background:var(--cy-bg);border:0.5px solid var(--cy2);padding:3px 10px;border-radius:2px;letter-spacing:.1em}
+
+/* ---- API BAR ---- */
+.api-bar{background:var(--bl-bg);border:0.5px solid var(--bl);border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.api-bar input{flex:1;min-width:180px;font-family:var(--mn);font-size:12px;padding:8px 12px;border-radius:var(--rs);border:0.5px solid var(--brd2);background:var(--bg3);color:var(--cy);outline:none}
+.api-bar input:focus{border-color:var(--cy2)}
+.btn{font-family:var(--ar);font-size:12px;font-weight:600;padding:8px 16px;border-radius:var(--rs);cursor:pointer;border:0.5px solid;transition:all .15s;white-space:nowrap}
+.btn-cy{background:var(--cy-bg);color:var(--cy);border-color:var(--cy2)}
+.btn-cy:hover{background:var(--cy);color:var(--bg)}
+.btn-gr{background:var(--gr-bg);color:var(--gr);border-color:var(--gr)}
+.btn-gr:hover{background:var(--gr);color:var(--bg)}
+.btn-rd{background:var(--rd-bg);color:var(--rd);border-color:var(--rd)}
+.api-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);display:inline-block}
+.api-dot.ok{background:var(--gr);box-shadow:0 0 6px var(--gr)}
+.api-info{font-size:11px;color:var(--text2)}
+
+/* ---- TABS ---- */
+.tabs{display:flex;gap:6px;margin-bottom:1.5rem;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{font-family:var(--ar);font-size:13px;font-weight:500;padding:8px 16px;border-radius:var(--rs);border:0.5px solid var(--brd2);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.tab.on{background:var(--cy-bg);color:var(--cy);border-color:var(--cy2)}
+.pane{display:none}.pane.on{display:block}
+
+/* ---- CARD ---- */
+.card{background:var(--bg2);border:0.5px solid var(--brd);border-radius:var(--r);padding:1.25rem;margin-bottom:1rem}
+.ctitle{font-family:var(--mn);font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:1rem;display:flex;align-items:center;gap:8px}
+.ctitle::before{content:'';width:3px;height:12px;background:var(--cy);border-radius:1px;flex-shrink:0}
+
+/* ---- SUMMARY ---- */
+.sum-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1.25rem}
+.sc-card{background:var(--bg3);border:0.5px solid var(--brd);border-radius:var(--r);padding:12px 14px;text-align:center}
+.sc-val{font-family:var(--mn);font-size:22px;font-weight:600;color:var(--text)}
+.sc-lbl{font-size:11px;color:var(--text3);margin-top:3px}
+
+/* ---- MOTOR GRID ---- */
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:1.25rem}
+.mcard{background:var(--bg3);border:0.5px solid var(--brd);border-radius:var(--r);padding:13px;cursor:pointer;transition:all .2s;position:relative}
+.mcard:hover{border-color:var(--cy2)}
+.mcard.sel{background:var(--cy-bg);border-color:var(--cy)}
+.m-id{font-family:var(--mn);font-size:10px;color:var(--text3);margin-bottom:3px}
+.m-name{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
+.m-loc{font-size:11px;color:var(--text2);margin-bottom:8px}
+.m-hi{font-family:var(--mn);font-size:22px;font-weight:600}
+.m-bar-bg{height:3px;border-radius:2px;background:var(--bg4);overflow:hidden;margin-top:8px}
+.m-bar{height:100%;border-radius:2px;transition:width .5s}
+.m-mets{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.m-met{font-family:var(--mn);font-size:10px;color:var(--text3)}
+.m-met span{color:var(--text2)}
+.alrt-bdg{font-family:var(--mn);font-size:9px;padding:2px 6px;border-radius:2px;font-weight:600;margin-top:4px;display:inline-block}
+
+/* ---- ALERT BANNERS ---- */
+.alert-b{border-radius:var(--rs);padding:10px 14px;font-size:12px;line-height:1.7;margin-bottom:8px;border:0.5px solid}
+.alert-b.crit{background:var(--rd-bg);border-color:var(--rd);color:var(--rd)}
+.alert-b.warn{background:var(--am-bg);border-color:var(--am);color:var(--am)}
+
+/* ---- FORM ---- */
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:1rem}
+.fg4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
+.fld{display:flex;flex-direction:column;gap:4px}
+.fld label{font-size:11px;color:var(--text2);font-weight:500}
+.fld .hint{font-size:10px;color:var(--text3)}
+.fld input,.fld select{width:100%;padding:8px 10px;border:0.5px solid var(--brd2);border-radius:var(--rs);background:var(--bg4);color:var(--text);font-size:13px;font-family:var(--ar);outline:none}
+.fld input:focus,.fld select:focus{border-color:var(--cy2)}
+.fld input[type=number]{font-family:var(--mn)}
+
+/* ---- MOTOR STRIP ---- */
+.mstrip{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem}
+.mchip{font-family:var(--mn);font-size:11px;padding:5px 10px;border-radius:var(--rs);border:0.5px solid var(--brd2);background:var(--bg3);color:var(--text2);cursor:pointer;transition:all .15s}
+.mchip.on{background:var(--cy-bg);color:var(--cy);border-color:var(--cy2)}
+
+/* ---- GAUGE ---- */
+.gauge-row{display:flex;align-items:center;gap:1.5rem;margin-bottom:1.25rem;flex-wrap:wrap}
+.hi-num{font-family:var(--mn);font-size:52px;font-weight:600;line-height:1}
+.hi-grade{font-size:12px;font-weight:600;padding:4px 12px;border-radius:var(--rs);margin-top:8px;display:inline-block;font-family:var(--mn);letter-spacing:.06em}
+.hi-eq{font-size:10px;color:var(--text2);margin-top:8px;font-family:var(--mn);line-height:1.8}
+
+/* ---- SUBSCORES ---- */
+.sub-g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
+.sub-c{background:var(--bg3);border-radius:var(--rs);padding:11px}
+.sub-n{font-size:10px;color:var(--text2);margin-bottom:5px;line-height:1.4}
+.sub-s{font-size:9px;color:var(--text3)}
+.sub-bb{height:3px;border-radius:2px;background:var(--bg4);overflow:hidden;margin-bottom:5px}
+.sub-bv{height:100%;border-radius:2px;transition:width .7s}
+.sub-num{font-family:var(--mn);font-size:18px;font-weight:600;color:var(--text)}
+
+/* ---- BADGES ---- */
+.bdgs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:1rem}
+.bdg{font-family:var(--mn);font-size:10px;padding:3px 8px;border-radius:var(--rs);font-weight:500}
+.ok{background:var(--gr-bg);color:var(--gr);border:0.5px solid #00D98A30}
+.wn{background:var(--am-bg);color:var(--am);border:0.5px solid #FFA82030}
+.er{background:var(--rd-bg);color:var(--rd);border:0.5px solid #FF3D4E30}
+
+/* ---- METRICS ---- */
+.mets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
+.met-c{background:var(--bg3);border-radius:var(--rs);padding:10px;text-align:center}
+.met-v{font-family:var(--mn);font-size:15px;font-weight:600;color:var(--text)}
+.met-l{font-size:10px;color:var(--text3);margin-top:2px}
+
+/* ---- ACTION ---- */
+.act-box{border-radius:var(--rs);padding:1rem;font-size:13px;line-height:1.8;border:0.5px solid;margin-bottom:1rem}
+
+/* ---- AI RESULT ---- */
+.ai-box{
+  background:var(--bg3);
+  border:0.5px solid var(--brd2);
+  border-radius:var(--r);
+  padding:1.25rem;
+  font-size:15px;
+  line-height:2.2;
+  color:var(--text2);
+  min-height:80px;
+  border-right:2px solid var(--cy2);
+  word-break:break-word;
+  overflow-y:visible;
+   height:auto;
+}
+.ai-box h3{
+  font-size: 14px;
+  color: var(--cy);
+  margin: 1.2rem 0 .6rem;
+  border-right: 3px solid var(--cy);
+  padding-right: 8px;
+}
+.ai-box strong{
+  color: #ffffff;
+  background: #00BFFF22;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.ai-box p{margin-bottom:.6rem}
+.ai-box ul{
+  padding-right: 1.5rem;
+}
+
+.ai-box li{
+  margin-bottom: 6px;
+}.ai-box li{margin-bottom:.3rem}
+.loading::after{content:'.';animation:ld 1.2s steps(3,end) infinite}
+@keyframes ld{0%,33%{content:'.'}33%,66%{content:'..'}66%,100%{content:'...'}}
+
+/* ---- CSV ---- */
+.drop{border:1px dashed var(--brd2);border-radius:var(--r);padding:2rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3)}
+.drop:hover,.drop.over{border-color:var(--cy2);background:var(--cy-bg)}
+.drop input{display:none}
+.map-g{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0}
+.map-c{background:var(--bg4);border:0.5px solid var(--brd);border-radius:var(--rs);padding:10px}
+.map-c label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
+.map-c select{width:100%;font-size:12px;background:var(--bg3);border:0.5px solid var(--brd2);border-radius:var(--rs);padding:5px 8px;color:var(--text);font-family:var(--ar)}
+
+/* ---- HISTORY ---- */
+.htbl{width:100%;border-collapse:collapse;font-size:12px}
+.htbl th{text-align:right;padding:8px 10px;background:var(--bg4);color:var(--text3);border-bottom:0.5px solid var(--brd);font-family:var(--mn);font-size:10px;letter-spacing:.06em}
+.htbl td{padding:7px 10px;border-bottom:0.5px solid var(--brd);color:var(--text);font-family:var(--mn);font-size:11px}
+
+/* ---- CHARTS ---- */
+.chart-w{background:var(--bg3);border:0.5px solid var(--brd);border-radius:var(--r);padding:14px;margin-bottom:1rem}
+.chart-t{font-family:var(--mn);font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+
+/* ---- DIVIDER ---- */
+.dvd{height:0.5px;background:var(--brd);margin:1rem 0}
+
+/* ---- PRINT ---- */
+.print-hdr{display:none}
+.print-btn{display:none;padding:8px 18px;border-radius:var(--rs);border:0.5px solid var(--cy2);background:var(--cy-bg);color:var(--cy);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ar)}
+
+@media print{
+  body{background:#fff!important;color:#111!important}
+  .topbar,.tabs,.api-bar,.mstrip,.fld,.fg3,.fg4,.fg2,
+  .btn,.dvd,.print-btn,#pane-dashboard,#pane-csv,
+  #pane-compare,#pane-history,#motorModal{display:none!important}
+  #pane-input{display:block!important}
+  #selInfo{display:none!important}
+  #manRes{display:block!important}
+  .wrap{max-width:100%;padding:0}
+  .card{background:#fff!important;border:1px solid #ccc!important;page-break-inside:avoid}
+  .ctitle{color:#1E3A5F!important}
+  .ctitle::before{background:#1E3A5F!important}
+  .hi-num{color:#111!important}
+  .sub-c{background:#f8f8f8!important;border:1px solid #ddd!important}
+  .sub-num{color:#111!important}
+  .met-c{background:#f8f8f8!important}
+  .met-v{color:#111!important}
+  .ai-box{display:block!important;background:#f5f8ff!important;color:#1a1a2e!important;border:1px solid #ccc!important;border-right:3px solid #1E3A5F!important;white-space:pre-wrap;font-size:12px;line-height:1.7}
+  .print-hdr{display:block!important;margin-bottom:1rem;padding-bottom:1rem;border-bottom:2px solid #1E3A5F}
+  .gauge-row svg{display:none}
+}
+
+/* ---- MODAL ---- */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;overflow-y:auto;padding:1rem}
+.modal-box{max-width:580px;margin:0 auto;background:var(--bg2);border:0.5px solid var(--brd2);border-radius:var(--r);padding:1.5rem;position:relative}
+
+/* ---- FOOTER ---- */
+.footer{text-align:center;font-family:var(--mn);font-size:10px;color:var(--text3);margin-top:2rem;padding-top:1rem;border-top:0.5px solid var(--brd);letter-spacing:.06em}
+
+@media(max-width:600px){
+  .sum-row{grid-template-columns:1fr 1fr}
+  .mgrid{grid-template-columns:1fr 1fr}
+  .fg3,.fg4,.sub-g,.mets{grid-template-columns:1fr 1fr}
+  .fg2,.map-g{grid-template-columns:1fr}
+  .gauge-row{flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div>
+    <div class="logo-title">DC MOTOR <span>FLEET</span></div>
+    <div class="logo-sub">Health Index - 18 DC Motors Monitoring System</div>
+  </div>
+  <span class="vtag">v4.0</span>
+</div>
+
+<!-- API KEY -->
+<div class="api-bar">
+  <input type="password" id="apiKey" placeholder="sk-ant-api03-...">
+  <button class="btn btn-cy" onclick="saveKey()">حفظ المفتاح</button>
+  <span class="api-dot" id="apiDot"></span>
+  <span class="api-info" id="apiTxt">لم يتم ادخال المفتاح</span>
+  <span class="api-info" style="margin-right:auto">
+    <a href="https://console.anthropic.com" target="_blank" style="color:var(--bl)">console.anthropic.com</a>
+  </span>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab on" onclick="swTab('dashboard')">لوحة المتابعة</button>
+  <button class="tab" onclick="swTab('input')">ادخال قراءة</button>
+  <button class="tab" onclick="swTab('csv')">رفع CSV</button>
+  <button class="tab" onclick="swTab('compare')">مقارنة</button>
+  <button class="tab" onclick="swTab('history')">السجل</button>
+</div>
+
+<!-- DASHBOARD -->
+<div class="pane on" id="pane-dashboard">
+  <div class="sum-row">
+    <div class="sc-card"><div class="sc-val" id="s-total">18</div><div class="sc-lbl">اجمالي الموتورات</div></div>
+    <div class="sc-card"><div class="sc-val" id="s-ok" style="color:var(--gr)">-</div><div class="sc-lbl">ممتاز / جيد</div></div>
+    <div class="sc-card"><div class="sc-val" id="s-wn" style="color:var(--am)">-</div><div class="sc-lbl">يحتاج متابعة</div></div>
+    <div class="sc-card"><div class="sc-val" id="s-cr" style="color:var(--rd)">-</div><div class="sc-lbl">حرج</div></div>
+    <div class="sc-card"><div class="sc-val" id="s-av" style="color:var(--cy)">-</div><div class="sc-lbl">متوسط HI</div></div>
+  </div>
+  <div id="alertsWrap"></div>
+  <div class="ctitle" style="margin-bottom:10px">حالة الموتورات - انقر لعرض التفاصيل</div>
+  <div class="mgrid" id="motorGrid"></div>
+</div>
+
+<!-- INPUT -->
+<div class="pane" id="pane-input">
+  <div class="card">
+    <div class="ctitle">اختر الموتور</div>
+    <div class="mstrip" id="motorStrip"></div>
+  </div>
+  <div class="card" id="selInfo" style="display:none">
+    <div class="ctitle" id="selTitle">-</div>
+    <div class="fg3">
+      <div class="fld"><label>القدرة الاسمية (kW)</label><input type="number" id="f-pow" value="600" min="0.1" step="0.1"></div>
+      <div class="fld"><label>الجهد الاسمي DC (V)</label><input type="number" id="f-vlt" value="600" min="1" step="1"></div>
+      <div class="fld"><label>دورية الصيانة (يوم)</label><input type="number" id="f-mi" value="180" min="1"></div>
+    </div>
+    <div class="dvd"></div>
+    <div class="ctitle">قراءات التشغيل</div>
+    <div class="fg4">
+      <div class="fld"><label>درجة الحرارة</label><input type="number" id="f-tmp" placeholder="72" min="0" max="250" step="0.1"><span class="hint">حد التحذير: 75</span></div>
+      <div class="fld"><label>التيار (A)</label><input type="number" id="f-cur" placeholder="13.5" min="0" step="0.1"></div>
+      <div class="fld"><label>الاهتزاز (mm/s)</label><input type="number" id="f-vib" placeholder="3.2" min="0" step="0.01"><span class="hint">ISO 10816</span></div>
+      <div class="fld"><label>ايام منذ الصيانة</label><input type="number" id="f-mdy" placeholder="90" min="0" step="1"></div>
+    </div>
+    <div class="fg3">
+      <div class="fld"><label>نوع اخر صيانة</label>
+        <select id="f-mtp">
+          <option value="full">شاملة</option>
+          <option value="partial" selected>دورية</option>
+          <option value="inspect">فحص فقط</option>
+          <option value="none">لا يوجد سجل</option>
+        </select>
+      </div>
+      <div class="fld"><label>حالة الفرش</label>
+        <select id="f-bsh">
+          <option value="good" selected>جيدة</option>
+          <option value="worn">متآكلة</option>
+          <option value="bad">تالفة</option>
+          <option value="replaced">مستبدلة</option>
+        </select>
+      </div>
+      <div class="fld" style="justify-content:flex-end">
+        <button class="btn btn-cy" style="width:100%;padding:11px;font-size:14px;font-weight:700" onclick="calcManual()">احسب Health Index</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="manRes" style="display:none">
+    <div class="card">
+      <!-- Print header -->
+      <div class="print-hdr" id="printHdr">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div style="font-size:20px;font-weight:700;color:#1E3A5F">تقرير Health Index - موتور DC</div>
+            <div style="font-size:12px;color:#555;margin-top:4px" id="printMot">-</div>
+          </div>
+          <div style="text-align:left;font-size:11px;color:#666" id="printDt">-</div>
+        </div>
+      </div>
+      <!-- Title row -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+        <div class="ctitle" id="resTitle" style="margin-bottom:0">-</div>
+        <button class="print-btn" id="printBtn" onclick="exportPDF()">PDF</button>
+      </div>
+      <!-- Gauge -->
+      <div class="gauge-row">
+        <svg width="145" height="90" viewBox="0 0 145 90" role="img" aria-label="Health Index Gauge">
+          <path d="M15 82 A57 57 0 0 1 130 82" fill="none" stroke="var(--bg4)" stroke-width="13" stroke-linecap="round"/>
+          <path id="gArc" d="M15 82 A57 57 0 0 1 130 82" fill="none" stroke="var(--cy)" stroke-width="13" stroke-linecap="round" stroke-dasharray="179" stroke-dashoffset="179" style="transition:stroke-dashoffset .9s ease,stroke .4s"/>
+          <line id="gNdl" x1="72" y1="82" x2="72" y2="30" stroke="var(--text)" stroke-width="2" stroke-linecap="round" transform="rotate(-90 72 82)" style="transition:transform .9s ease"/>
+          <circle cx="72" cy="82" r="4" fill="var(--text)"/>
+          <text x="8" y="90" font-size="9" fill="var(--text3)" text-anchor="middle" font-family="monospace">0</text>
+          <text x="72" y="20" font-size="9" fill="var(--text3)" text-anchor="middle" font-family="monospace">50</text>
+          <text x="136" y="90" font-size="9" fill="var(--text3)" text-anchor="middle" font-family="monospace">100</text>
+        </svg>
+        <div>
+          <div class="hi-num" id="hiNum">-</div>
+          <span class="hi-grade" id="hiGrade">-</span>
+          <div class="hi-eq" id="hiEq"></div>
+        </div>
+      </div>
+      <!-- Sub scores -->
+      <div class="sub-g" id="subGrid"></div>
+      <!-- Badges -->
+      <div class="bdgs" id="bdgsWrap"></div>
+      <!-- Metrics -->
+      <div class="mets" id="metsWrap"></div>
+      <!-- Action -->
+      <div class="act-box" id="actBox"></div>
+    </div>
+    <!-- AI -->
+    <div class="card" id="aiCard">
+      <div class="ctitle">التشخيص الهندسي - ذكاء اصطناعي</div>
+      <!-- Copy-paste section (shown when file:// detected) -->
+      <div id="cpSection" style="display:none;background:var(--bl-bg);border:0.5px solid var(--bl);border-radius:var(--rs);padding:1rem;margin-bottom:1rem">
+        <div style="font-size:13px;color:var(--text);margin-bottom:10px;line-height:1.7">
+          <strong style="color:var(--cy)">انسخ النص التالي</strong> والصقه في
+          <a href="https://claude.ai" target="_blank" style="color:var(--cy)">claude.ai</a>
+          ثم الصق الرد في الحقل ادناه
+        </div>
+        <div style="position:relative">
+          <textarea id="cpPromptTA" readonly
+            style="width:100%;height:160px;font-size:11px;padding:10px;border:0.5px solid var(--brd2);border-radius:var(--rs);background:var(--bg3);color:var(--text);font-family:var(--mn);resize:vertical;direction:rtl;outline:none;line-height:1.6"></textarea>
+          <button id="cpCopyBtn" onclick="cpCopy()"
+            style="position:absolute;top:8px;left:8px;padding:5px 12px;border-radius:var(--rs);border:0.5px solid var(--cy2);background:var(--cy-bg);color:var(--cy);font-size:11px;cursor:pointer;font-family:var(--ar);font-weight:600">
+            نسخ
+          </button>
+        </div>
+        <div style="margin-top:10px">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px">الصق رد الذكاء الاصطناعي هنا:</div>
+          <textarea id="cpResultTA"
+            style="width:100%;height:90px;font-size:12px;padding:8px;border:0.5px solid var(--brd2);border-radius:var(--rs);background:var(--bg3);color:var(--text);font-family:var(--ar);direction:rtl;outline:none;resize:vertical"
+            placeholder="الصق الرد هنا..."></textarea>
+          <button onclick="cpApply()"
+            style="width:100%;margin-top:6px;padding:9px;border-radius:var(--rs);border:0.5px solid var(--gr);background:var(--gr-bg);color:var(--gr);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--ar)">
+            عرض التقرير
+          </button>
+        </div>
+      </div>
+      <div class="ai-box" id="aiBox" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CSV -->
+<div class="pane" id="pane-csv">
+  <div class="card">
+    <div class="ctitle">رفع ملف قراءات</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:1rem;line-height:1.7">الملف يجب ان يحتوي على: motor_id - temperature - current - vibration - maint_days</p>
+    <div class="drop" id="csvDrop" onclick="document.getElementById('csvFile').click()" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="handleDrop(event)">
+      <input type="file" id="csvFile" accept=".csv,.xlsx,.xls" onchange="handleFile(this.files[0])">
+      <p style="font-size:14px;color:var(--text2);margin-bottom:6px">اسحب ملف CSV او Excel</p>
+      <p style="font-size:11px;color:var(--text3)">motor_id - temperature - current - vibration - maint_days</p>
+    </div>
+    <button class="btn btn-cy" onclick="loadSample()" style="margin-top:10px;font-size:12px">تحميل بيانات تجريبية</button>
+    <div id="csvMapWrap" style="display:none;margin-top:1rem">
+      <div id="csvPill" style="margin-bottom:10px"></div>
+      <div class="ctitle">ربط الاعمدة</div>
+      <div class="map-g" id="mapGrid"></div>
+      <div style="overflow-x:auto;margin-top:10px"><table class="htbl" id="csvPrev"></table></div>
+      <button class="btn btn-cy" style="width:100%;margin-top:1rem;padding:12px;font-size:14px" onclick="processCSV()">معالجة الملف وحساب HI</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMPARE -->
+<div class="pane" id="pane-compare">
+  <div class="card">
+    <div class="ctitle">مقارنة Health Index - جميع الموتورات</div>
+    <div class="chart-w">
+      <div class="chart-t">HEALTH INDEX - ALL MOTORS</div>
+      <div style="position:relative;height:300px"><canvas id="cmpChart"></canvas></div>
+    </div>
+    <div class="chart-w">
+      <div class="chart-t">RADAR - WORST 5 MOTORS</div>
+      <div style="position:relative;height:270px"><canvas id="radChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="pane" id="pane-history">
+  <div class="card">
+    <div class="ctitle">السجل التاريخي</div>
+    <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+      <select id="histFlt" onchange="renderHist()" style="font-size:12px;padding:6px 10px;border:0.5px solid var(--brd2);border-radius:var(--rs);background:var(--bg3);color:var(--text);font-family:var(--ar)">
+        <option value="all">جميع الموتورات</option>
+      </select>
+      <button class="btn btn-rd" onclick="clearHist()">مسح السجل</button>
+      <button class="btn btn-rd" onclick="clearAll()" style="opacity:.75">مسح كل البيانات</button>
+      <button class="btn btn-cy" onclick="exportCSV()">تصدير CSV</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="htbl">
+        <thead><tr>
+          <th>الموتور</th><th>التاريخ</th><th>HI</th><th>الحرارة</th><th>التيار</th><th>الاهتزاز</th><th>صيانة</th><th>الحالة</th>
+        </tr></thead>
+        <tbody id="histBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="motorModal">
+  <div class="modal-box">
+    <button onclick="closeModal()" style="position:absolute;top:12px;left:12px;background:var(--rd-bg);border:0.5px solid var(--rd);color:var(--rd);border-radius:var(--rs);padding:4px 10px;cursor:pointer;font-family:var(--mn);font-size:11px">X</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<div class="footer">DC MOTOR FLEET v4.0 - Health Index Monitoring - IEC 60034-1 - ISO 10816 - NEMA MG1</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* MOTORS */
+var MOTORS = [];
+for (var mi = 0; mi < 18; mi++) {
+  var locs = ['MDM','MDM','MDM','MDM','MDM','MDM','MDM','MDM','MDM','MDM','MDM','MDM','MDM','MDM','MDM','MDM','MDM','MDM'];
+  var pows = [600,600,600,600,600,600,600,600,600,600,600,600,600,600,600,600,600,600];
+  var num = mi + 1;
+  var numStr = num < 10 ? '0' + num : '' + num;
+  MOTORS.push({
+    id: 'STD#' + num,
+    name: 'STD#' + num,
+    location: locs[mi % 18],
+    power: pows[mi],
+    volt: 600,
+    mintv: 180,
+    readings: []
+  });
+}
+
+var selIdx = 0;
+var apiKey = localStorage.getItem('fleet_key') || localStorage.getItem('fleet_api_key') || '';
+var csvRows = [], csvHdr = [], charts = {};
+var HIST = JSON.parse(localStorage.getItem('fleet_hist') || '[]');
+
+/* SAVE / LOAD MOTORS READINGS */
+function saveMotors() {
+  var data = MOTORS.map(function(m) {
+    return {
+      id: m.id,
+      power: m.power,
+      volt: m.volt,
+      mintv: m.mintv,
+      readings: m.readings
+    };
+  });
+  localStorage.setItem('fleet_motors', JSON.stringify(data));
+}
+function loadMotors() {
+  var raw = localStorage.getItem('fleet_motors');
+  if (!raw) return;
+  try {
+    var data = JSON.parse(raw);
+    data.forEach(function(saved) {
+      var m = MOTORS.find(function(x){ return x.id === saved.id; });
+      if (m) {
+        if (saved.power) m.power = saved.power;
+        if (saved.volt)  m.volt  = saved.volt;
+        if (saved.mintv) m.mintv = saved.mintv;
+        if (saved.readings && saved.readings.length) {
+          m.readings = saved.readings;
+        }
+      }
+    });
+  } catch(e) { console.warn('loadMotors error:', e); }
+}
+
+window.onload = function() {
+  if (apiKey) {
+    document.getElementById('apiKey').value = apiKey;
+    setDot(true);
+  }
+  loadMotors();   // restore saved readings
+  buildStrip();
+  buildDash();
+  updHistFlt();
+};
+
+/* API KEY */
+function saveKey() {
+  var v = document.getElementById('apiKey').value.trim();
+  if (!v) { alert('ادخل المفتاح'); return; }
+  apiKey = v;
+  localStorage.setItem('fleet_key', v);
+  localStorage.setItem('fleet_api_key', v);
+  setDot(true);
+}
+function setDot(ok) {
+  document.getElementById('apiDot').className = 'api-dot' + (ok ? ' ok' : '');
+  document.getElementById('apiTxt').textContent = ok ? 'المفتاح محفوظ' : 'لم يتم ادخال المفتاح';
+  document.getElementById('apiTxt').style.color = ok ? 'var(--gr)' : 'var(--text2)';
+}
+
+/* TABS */
+function swTab(t) {
+  var ids = ['dashboard','input','csv','compare','history'];
+  document.querySelectorAll('.tab').forEach(function(b, i) { b.classList.toggle('on', ids[i] === t); });
+  document.querySelectorAll('.pane').forEach(function(p) { p.classList.remove('on'); });
+  document.getElementById('pane-' + t).classList.add('on');
+  if (t === 'compare') renderCompare();
+  if (t === 'history') renderHist();
+}
+
+/* SCORES */
+function scTemp(t) {
+  if (t > 90) return Math.max(0, 100 - (t - 90) * 3);
+  if (t > 75) return Math.max(0, 100 - (t - 75) * 2);
+  return 100;
+}
+function scCurr(i, pow, volt) {
+  var rI = (pow * 1000) / volt;
+  var lp = rI > 0 ? (i / rI) * 100 : 50;
+  if (lp > 110) return Math.max(0, 100 - (lp - 110) * 3);
+  if (lp > 95)  return Math.max(0, 100 - (lp - 95) * 1.5);
+  if (lp < 40)  return Math.max(0, 100 - (40 - lp) * 0.5);
+  return 100;
+}
+function scVib(v) {
+  if (v < 2.3) return 100;
+  if (v < 4.5) return 100 - (v - 2.3) / (4.5 - 2.3) * 25;
+  if (v < 7.1) return 75 - (v - 4.5) / (7.1 - 4.5) * 35;
+  return Math.max(0, 40 - (v - 7.1) * 5);
+}
+function scMaint(days, intv, type, brush) {
+  var s = 100;
+  var r = days / intv;
+  if (r > 1.5) s -= 40; else if (r > 1.2) s -= 25; else if (r > 1.0) s -= 15; else if (r > 0.8) s -= 5;
+  if (type === 'inspect') s -= 10; else if (type === 'none') s -= 25; else if (type === 'full') s = Math.min(100, s + 5);
+  if (brush === 'bad') s -= 35; else if (brush === 'worn') s -= 18; else if (brush === 'replaced') s = Math.min(100, s + 8);
+  return Math.max(0, Math.min(100, s));
+}
+function calcHI(T, I, V, MD, MI, MT, BS, pow, volt) {
+  var sT = scTemp(T);
+  var sC = scCurr(I, pow, volt);
+  var sV = scVib(V);
+  var sM = scMaint(MD, MI, MT, BS);
+  var hi = Math.round(0.35 * sT + 0.25 * sV + 0.25 * sC + 0.15 * sM);
+  return { hi: hi, sT: sT, sC: sC, sV: sV, sM: sM };
+}
+function grade(hi) {
+  if (hi >= 85) return { lbl: 'EXCELLENT', clr: 'var(--gr)', bg: 'var(--gr-bg)', tc: 'var(--gr)', act: 'الموتور في حالة ممتازة. مراقبة شهرية.' };
+  if (hi >= 70) return { lbl: 'GOOD',      clr: '#7FD94A',   bg: '#7FD94A12',    tc: '#7FD94A', act: 'جيد. صيانة وقائية شهرية.' };
+  if (hi >= 55) return { lbl: 'FAIR',      clr: 'var(--am)', bg: 'var(--am-bg)', tc: 'var(--am)', act: 'يحتاج انتباها. صيانة خلال اسبوعين.' };
+  if (hi >= 40) return { lbl: 'POOR',      clr: '#FF8040',   bg: '#FF804011',    tc: '#FF8040', act: 'تدهور. فحص شامل خلال 72 ساعة.' };
+  return             { lbl: 'CRITICAL',  clr: 'var(--rd)', bg: 'var(--rd-bg)', tc: 'var(--rd)', act: 'توقف فوري. فحص شامل قبل اعادة التشغيل.' };
+}
+function bclr(s) { return s >= 80 ? 'var(--gr)' : s >= 60 ? 'var(--am)' : 'var(--rd)'; }
+
+/* DASHBOARD */
+function buildDash() {
+  var html = '';
+  MOTORS.forEach(function(m, i) {
+    var last = m.readings.length ? m.readings[m.readings.length - 1] : null;
+    var hi = last ? last.hi : null;
+    var g = hi !== null ? grade(hi) : null;
+    var clr = g ? g.clr : 'var(--text3)';
+    var pct = hi !== null ? hi : 0;
+    var alrt = hi !== null && hi < 40 ? 'CRITICAL' : (hi !== null && hi < 55 ? 'WARNING' : null);
+    html += '<div class="mcard" onclick="openModal(' + i + ')">';
+    html += '<div class="m-id">' + m.id + '</div>';
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start">';
+    html += '<div><div class="m-name">' + m.name + '</div><div class="m-loc">' + m.location + '</div></div>';
+    html += '<div class="m-hi" style="color:' + clr + '">' + (hi !== null ? hi : '-') + '</div>';
+    html += '</div>';
+    if (alrt) html += '<div class="alrt-bdg" style="background:var(--rd-bg);color:var(--rd);border:0.5px solid var(--rd)">' + alrt + '</div>';
+    html += '<div class="m-bar-bg"><div class="m-bar" style="width:' + pct + '%;background:' + clr + '"></div></div>';
+    if (last) {
+      html += '<div class="m-mets">';
+      html += '<div class="m-met">T:<span>' + last.temp + '</span></div>';
+      html += '<div class="m-met">A:<span>' + last.curr + '</span></div>';
+      html += '<div class="m-met">V:<span>' + last.vib + '</span></div>';
+      html += '</div>';
+    } else {
+      html += '<div class="m-met" style="margin-top:6px">لا توجد قراءات</div>';
+    }
+    html += '</div>';
+  });
+  document.getElementById('motorGrid').innerHTML = html;
+  updSummary();
+  renderAlerts();
+}
+function updSummary() {
+  var wd = MOTORS.filter(function(m) { return m.readings.length > 0; });
+  var ok = wd.filter(function(m) { return m.readings[m.readings.length-1].hi >= 70; }).length;
+  var wn = wd.filter(function(m) { var h=m.readings[m.readings.length-1].hi; return h>=40&&h<70; }).length;
+  var cr = wd.filter(function(m) { return m.readings[m.readings.length-1].hi < 40; }).length;
+  var av = wd.length ? Math.round(wd.reduce(function(s,m){return s+m.readings[m.readings.length-1].hi;},0)/wd.length) : '-';
+  document.getElementById('s-ok').textContent = ok;
+  document.getElementById('s-wn').textContent = wn;
+  document.getElementById('s-cr').textContent = cr;
+  document.getElementById('s-av').textContent = av;
+}
+function renderAlerts() {
+  var crits = MOTORS.filter(function(m){ return m.readings.length && m.readings[m.readings.length-1].hi < 40; });
+  var warns = MOTORS.filter(function(m){ var h=m.readings.length && m.readings[m.readings.length-1].hi; return h>=40&&h<55; });
+  var html = '';
+  crits.forEach(function(m){ html += '<div class="alert-b crit">CRITICAL: ' + m.id + ' - ' + m.name + ': HI=' + m.readings[m.readings.length-1].hi + ' - توقف فوري مطلوب</div>'; });
+  warns.forEach(function(m){ html += '<div class="alert-b warn">WARNING: ' + m.id + ' - ' + m.name + ': HI=' + m.readings[m.readings.length-1].hi + ' - يحتاج صيانة</div>'; });
+  document.getElementById('alertsWrap').innerHTML = html;
+}
+
+/* MOTOR STRIP */
+function buildStrip() {
+  var html = '';
+  MOTORS.forEach(function(m, i) {
+    html += '<button class="mchip' + (i===0?' on':'') + '" onclick="selMotor(' + i + ')">' + m.id + '</button>';
+  });
+  document.getElementById('motorStrip').innerHTML = html;
+  selMotor(0);
+}
+function selMotor(idx) {
+  selIdx = idx;
+  document.querySelectorAll('.mchip').forEach(function(c, i){ c.classList.toggle('on', i===idx); });
+  var m = MOTORS[idx];
+  document.getElementById('selInfo').style.display = 'block';
+  document.getElementById('selTitle').textContent = m.id + ' - ' + m.name + ' - ' + m.location;
+  document.getElementById('f-pow').value = m.power;
+  document.getElementById('f-vlt').value = m.volt;
+  document.getElementById('f-mi').value = m.mintv;
+  document.getElementById('manRes').style.display = 'none';
+}
+
+/* MANUAL CALC */
+function calcManual() {
+  var T  = parseFloat(document.getElementById('f-tmp').value);
+  var I  = parseFloat(document.getElementById('f-cur').value);
+  var V  = parseFloat(document.getElementById('f-vib').value);
+  var MD = parseFloat(document.getElementById('f-mdy').value);
+  var MT = document.getElementById('f-mtp').value;
+  var BS = document.getElementById('f-bsh').value;
+  var pow  = parseFloat(document.getElementById('f-pow').value) || 600;
+  var volt = parseFloat(document.getElementById('f-vlt').value) || 600;
+  var mintv= parseFloat(document.getElementById('f-mi').value) || 180;
+  if (isNaN(T)||isNaN(I)||isNaN(V)||isNaN(MD)) { alert('ادخل جميع القراءات الاربعة'); return; }
+
+  var m = MOTORS[selIdx];
+  var res = calcHI(T, I, V, MD, mintv, MT, BS, pow, volt);
+  var hi=res.hi, sT=res.sT, sC=res.sC, sV=res.sV, sM=res.sM;
+  var g = grade(hi);
+  var rI = (pow * 1000) / volt;
+  var lp = rI > 0 ? Math.round((I / rI) * 100) : 0;
+  var nm = Math.max(0, mintv - MD);
+
+  var reading = { hi:hi, temp:T, curr:I, vib:V, mdays:MD, mtype:MT, brush:BS, ts:Date.now(), sT:sT, sC:sC, sV:sV, sM:sM };
+  m.readings.push(reading);
+  m.power = pow; m.volt = volt; m.mintv = mintv;
+  HIST.unshift({ motorId:m.id, motorName:m.name, hi:hi, temp:T, curr:I, vib:V, mdays:MD, mtype:MT, brush:BS, ts:Date.now(), sT:sT, sC:sC, sV:sV, sM:sM });
+  if (HIST.length > 500) HIST.splice(500);
+  localStorage.setItem('fleet_hist', JSON.stringify(HIST));
+  saveMotors();
+  buildDash();
+  updHistFlt();
+
+  document.getElementById('manRes').style.display = 'block';
+  document.getElementById('resTitle').textContent = m.id + ' - ' + m.name + ' - HI=' + hi;
+  document.getElementById('hiNum').textContent = hi;
+  document.getElementById('hiNum').style.color = g.clr;
+  var gb = document.getElementById('hiGrade');
+  gb.textContent = g.lbl; gb.style.background = g.bg; gb.style.color = g.tc;
+  document.getElementById('hiEq').textContent =
+    'HI = 0.35x' + Math.round(sT) + ' + 0.25x' + Math.round(sV) + ' + 0.25x' + Math.round(sC) + ' + 0.15x' + Math.round(sM) + ' = ' + hi;
+
+  setTimeout(function() {
+    var arc = document.getElementById('gArc');
+    var ndl = document.getElementById('gNdl');
+    arc.style.strokeDashoffset = 179 - (hi / 100) * 179;
+    arc.style.stroke = g.clr;
+    ndl.setAttribute('transform', 'rotate(' + (-90 + (hi/100)*180) + ' 72 82)');
+  }, 100);
+
+  var subNames = ['الحرارة IEC 60034-1 35%', 'الاهتزاز ISO 10816 25%', 'التيار NEMA MG1 25%', 'الصيانة 15%'];
+  var subVals = [sT, sV, sC, sM];
+  var sgHtml = '';
+  for (var si = 0; si < 4; si++) {
+    var sc = Math.round(subVals[si]);
+    sgHtml += '<div class="sub-c">';
+    sgHtml += '<div class="sub-n">' + subNames[si] + '</div>';
+    sgHtml += '<div class="sub-bb"><div class="sub-bv" style="width:' + sc + '%;background:' + bclr(sc) + '"></div></div>';
+    sgHtml += '<span class="sub-num" style="color:' + bclr(sc) + '">' + sc + '</span>';
+    sgHtml += '<span style="font-size:10px;color:var(--text3)"> /100</span></div>';
+  }
+  document.getElementById('subGrid').innerHTML = sgHtml;
+
+  var brMap = { good:'جيدة', worn:'متآكلة', bad:'تالفة', replaced:'مستبدلة' };
+  var bdgHtml = '';
+  bdgHtml += '<span class="bdg ' + (T>=90?'er':T>=75?'wn':'ok') + '">حرارة ' + T + '</span>';
+  bdgHtml += '<span class="bdg ' + (V>=7.1?'er':V>=2.8?'wn':'ok') + '">اهتزاز ' + V + ' mm/s</span>';
+  bdgHtml += '<span class="bdg ' + (lp>110?'er':lp>95?'wn':'ok') + '">حمل ' + lp + '%</span>';
+  bdgHtml += '<span class="bdg ' + (MD>mintv?'er':MD>mintv*.8?'wn':'ok') + '">صيانة ' + MD + ' يوم</span>';
+  bdgHtml += '<span class="bdg ' + (BS==='bad'?'er':BS==='worn'?'wn':'ok') + '">فرش ' + (brMap[BS]||BS) + '</span>';
+  document.getElementById('bdgsWrap').innerHTML = bdgHtml;
+
+  document.getElementById('metsWrap').innerHTML =
+    '<div class="met-c"><div class="met-v">' + T + '</div><div class="met-l">الحرارة</div></div>' +
+    '<div class="met-c"><div class="met-v">' + V + ' mm/s</div><div class="met-l">الاهتزاز</div></div>' +
+    '<div class="met-c"><div class="met-v">' + lp + '%</div><div class="met-l">نسبة الحمل</div></div>' +
+    '<div class="met-c"><div class="met-v">' + nm + ' يوم</div><div class="met-l">للصيانة القادمة</div></div>';
+
+  var ab = document.getElementById('actBox');
+  ab.style.background = g.bg; ab.style.color = g.tc; ab.style.borderColor = g.clr;
+  ab.textContent = g.act;
+
+  document.getElementById('printBtn').style.display = 'inline-block';
+  document.getElementById('printMot').textContent = m.id + ' - ' + m.name + ' - ' + m.location + ' - ' + pow + ' kW - ' + volt + 'V';
+  document.getElementById('printDt').textContent = new Date().toLocaleDateString('ar-SA', {year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  document.getElementById('manRes').scrollIntoView({ behavior:'smooth', block:'start' });
+
+  var mtMap = { full:'شاملة', partial:'دورية', inspect:'فحص فقط', none:'لا يوجد' };
+  var loc = (m.location && m.location !== 'undefined') ? m.location : 'MDM';
+  var prompt = [
+    'أنت مهندس متخصص في موثوقية موتورات DC. بيانات الموتور ' + m.id + ' من موقع ' + loc + ':',
+    '',
+    '- الحرارة: ' + T + '°C — مؤشر ' + Math.round(sT) + '/100',
+    '- الاهتزاز: ' + V + ' mm/s — مؤشر ' + Math.round(sV) + '/100 (ISO 10816)',
+    '- التيار: ' + I + 'A (حمل ' + lp + '%) — مؤشر ' + Math.round(sC) + '/100',
+    '- الصيانة: منذ ' + MD + ' يوم، دورية ' + mintv + ' يوم، نوع: ' + (mtMap[MT]||MT) + '، فرش: ' + (brMap[BS]||BS) + ' — مؤشر ' + Math.round(sM) + '/100',
+    '- Health Index الكلي: ' + hi + '/100 — ' + g.lbl,
+    '- القدرة: ' + pow + ' kW — الجهد: ' + volt + 'V DC',
+    '',
+    'اكتب تقريراً هندسياً شاملاً بالعربية يتضمن:',
+    '1. ملخص تنفيذي: تقييم الحالة العامة للموتور',
+    '2. تحليل مؤشر الصحة الكلي (' + hi + '/100) وتفسيره الهندسي',
+    '3. تحليل تفصيلي لكل مؤشر فرعي (الحرارة - الاهتزاز - التيار - الصيانة) مع أسباب التدهور المحتملة',
+    '4. تقييم حالة الفرش وتأثيرها على أداء الموتور وعمره الافتراضي',
+    '5. المخاطر المحتملة إن لم تُتخذ إجراءات',
+    '6. توصيات فورية مرتبة حسب الأولوية',
+    '7. جدول صيانة مقترح مع المواعيد والأعمال المطلوبة',
+    'كن دقيقاً وتفصيلياً في كل نقطة.'
+  ].join('\n');
+
+  var key = localStorage.getItem('fleet_key') || localStorage.getItem('fleet_api_key') || apiKey;
+  if (!key) {
+    document.getElementById('aiBox').style.display = 'block';
+    document.getElementById('aiBox').textContent = 'ادخل مفتاح API واضغط حفظ.';
+    return;
+  }
+  apiKey = key;
+  callAPI(prompt, key);
+}
+
+/* ---- MARKDOWN RENDERER ---- */
+function mdRender(t) {
+  var lines = t.split('\n');
+  var out = '';
+  var inUl = false;
+  var inOl = false;
+  var inTbl = false;
+  var tblRows = [];
+
+  function closeLists() {
+    if (inUl) { out += '</ul>'; inUl = false; }
+    if (inOl) { out += '</ol>'; inOl = false; }
+  }
+  function flushTable() {
+    if (!tblRows.length) return;
+    var tbl = '<div style="overflow-x:auto;margin:.75rem 0"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+    tblRows.forEach(function(row, ri) {
+      var cells = row.split('|').map(function(c){return c.trim();}).filter(function(c){return c!=='';});
+      if (cells.every(function(c){return /^[-:]+$/.test(c);})) return; // skip separator
+      var tag = ri === 0 ? 'th' : 'td';
+      var style = ri === 0
+        ? 'background:var(--bg4);color:var(--cy);padding:6px 10px;border:0.5px solid var(--brd2);font-size:11px;font-weight:600'
+        : 'color:var(--text);padding:6px 10px;border:0.5px solid var(--brd2);font-size:11px';
+      tbl += '<tr>' + cells.map(function(c){return '<'+tag+' style="'+style+'">'+c+'</'+tag+'>';}).join('') + '</tr>';
+    });
+    tbl += '</table></div>';
+    out += tbl;
+    tblRows = [];
+    inTbl = false;
+  }
+
+  for (var i = 0; i < lines.length; i++) {
+    var l = lines[i];
+
+    // table row
+    if (/^\|/.test(l)) {
+      closeLists();
+      inTbl = true;
+      tblRows.push(l);
+      continue;
+    }
+    if (inTbl) { flushTable(); }
+
+    // heading
+    if (/^#{1,3}\s/.test(l)) {
+      closeLists();
+      var htext = l.replace(/^#+\s+/, '').replace(/\*\*(.+?)\*\*/g,'$1');
+      out += '<h3 style="color:var(--cy);font-size:13px;margin:1.2rem 0 .4rem;font-weight:700;border-bottom:0.5px solid var(--brd2);padding-bottom:.3rem">' + htext + '</h3>';
+      continue;
+    }
+    // numbered list
+    if (/^\d+\.\s/.test(l)) {
+      if (inUl) { out += '</ul>'; inUl = false; }
+      if (!inOl) { out += '<ol style="padding-right:1.4rem;margin:.4rem 0">'; inOl = true; }
+      var li = l.replace(/^\d+\.\s+/, '').replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--text)">$1</strong>');
+      out += '<li style="margin-bottom:.35rem">' + li + '</li>';
+      continue;
+    }
+    // bullet list
+    if (/^[\-\*]\s/.test(l)) {
+      if (inOl) { out += '</ol>'; inOl = false; }
+      if (!inUl) { out += '<ul style="padding-right:1.4rem;margin:.4rem 0;list-style:disc">'; inUl = true; }
+      var li2 = l.replace(/^[\-\*]\s+/, '').replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--text)">$1</strong>');
+      out += '<li style="margin-bottom:.35rem">' + li2 + '</li>';
+      continue;
+    }
+    // close lists
+    closeLists();
+    // blank line
+    if (!l.trim()) { out += '<div style="height:.5rem"></div>'; continue; }
+    // paragraph
+    var p = l.replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--text)">$1</strong>');
+    out += '<p style="margin-bottom:.5rem">' + p + '</p>';
+  }
+  closeLists();
+  if (inTbl) flushTable();
+  return out;
+}
+
+/* API CALL */
+function showCopyPaste(prompt) {
+  var box = document.getElementById('aiBox');
+  var cp  = document.getElementById('cpSection');
+  box.style.display = 'none';
+  cp.style.display  = 'block';
+  document.getElementById('cpPromptTA').value = prompt;
+}
+
+function callAPI(prompt, key) {
+  var box = document.getElementById('aiBox');
+  var cp  = document.getElementById('cpSection');
+
+  cp.style.display  = 'none';
+  box.style.display = 'block';
+  box.className     = 'ai-box loading';
+  box.textContent   = 'جاري التحليل';
+
+  var hdrs = {
+    'Content-Type': 'application/json',
+    'x-api-key': key,
+    'anthropic-version': '2023-06-01',
+    'anthropic-dangerous-direct-browser-access': 'true'
+  };
+
+  var streamPayload = JSON.stringify({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2048,
+    stream: true,
+    messages: [{ role: 'user', content: prompt }]
+  });
+
+  var fullText = '';
+
+  function renderFinal() {
+    box.className = 'ai-box';
+    box.innerHTML = mdRender(fullText);
+    box.scrollTop = 0;
+  }
+
+  function xhrFallback() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'https://api.anthropic.com/v1/messages', true);
+    Object.keys(hdrs).forEach(function(k){ xhr.setRequestHeader(k, hdrs[k]); });
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        try {
+          var d = JSON.parse(xhr.responseText);
+          if (d.content && d.content.length > 0) {
+            fullText = d.content.map(function(c){ return c.text || ''; }).join('\n');
+            renderFinal();
+          } else { showCopyPaste(prompt); }
+        } catch(ex) { showCopyPaste(prompt); }
+      } else { showCopyPaste(prompt); }
+    };
+    xhr.onerror = function() { showCopyPaste(prompt); };
+    xhr.send(JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }]
+    }));
+  }
+
+  fetch('https://api.anthropic.com/v1/messages', { method:'POST', headers:hdrs, body:streamPayload })
+    .then(function(r) {
+      if (!r.ok) {
+        if (r.status === 401) {
+          box.className = 'ai-box';
+          box.innerHTML = '<p style="color:var(--rd)">\u0645\u0641\u062a\u0627\u062d API \u063a\u064a\u0631 \u0635\u062d\u064a\u062d.</p>';
+          showCopyPaste(prompt);
+        } else {
+          showCopyPaste(prompt);
+        }
+        return;
+      }
+      box.className = 'ai-box';
+      box.innerHTML = '<span style="color:var(--text3);font-family:var(--mn);font-size:11px">&#x25cf; جاري التحليل...</span>';
+      var reader = r.body.getReader();
+      var decoder = new TextDecoder();
+      var buf = '';
+      var streamDone = false;
+      function pump() {
+        return reader.read().then(function(res) {
+          if (res.done || streamDone) { streamDone = true; renderFinal(); return; }
+          buf += decoder.decode(res.value, { stream: true });
+          var lines = buf.split('\n');
+          buf = lines.pop();
+          lines.forEach(function(line) {
+            if (line.slice(0,6) !== 'data: ') return;
+            var json = line.slice(6).trim();
+            if (json === '[DONE]') { streamDone = true; return; }
+            try {
+              var ev = JSON.parse(json);
+              if (ev.type === 'content_block_delta' && ev.delta && ev.delta.text) {
+                fullText += ev.delta.text;
+              }
+            } catch(e) {}
+          });
+          if (streamDone) { renderFinal(); return; }
+          return pump();
+        }).catch(function() { if (fullText) renderFinal(); else showCopyPaste(prompt); });
+      }
+      return pump();
+    })
+    .catch(function() { xhrFallback(); });
+}
+
+/* COPY-PASTE */
+function cpCopy() {
+  var ta = document.getElementById('cpPromptTA');
+  ta.select();
+  ta.setSelectionRange(0, 99999);
+  var btn = document.getElementById('cpCopyBtn');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(ta.value).then(function() {
+      btn.textContent = 'تم النسخ';
+      btn.style.background = 'var(--gr-bg)';
+      btn.style.color = 'var(--gr)';
+      btn.style.borderColor = 'var(--gr)';
+      setTimeout(function() {
+        btn.textContent = 'نسخ';
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }, 2500);
+    });
+  } else {
+    document.execCommand('copy');
+    btn.textContent = 'تم النسخ';
+    setTimeout(function() { btn.textContent = 'نسخ'; }, 2500);
+  }
+}
+function cpApply() {
+  var txt = document.getElementById('cpResultTA').value.trim();
+  if (!txt) { alert('الصق الرد اولا'); return; }
+  var box = document.getElementById('aiBox');
+  box.textContent = txt;
+  box.style.display = 'block';
+  document.getElementById('cpSection').style.display = 'none';
+}
+
+/* PRINT */
+async function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  const element = document.getElementById('manRes');
+
+  if (!element) {
+    alert('لا يوجد تقرير');
+    return;
+  }
+
+  const btn = document.getElementById('printBtn');
+  const oldDisplay = btn ? btn.style.display : null;
+  if (btn) btn.style.display = 'none';
+
+  try {
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff"
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
+    const pageWidth = 210;
+    const pageHeight = (canvas.height * pageWidth) / canvas.width;
+
+    let heightLeft = pageHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, 'PNG', 0, position, pageWidth, pageHeight);
+    heightLeft -= 297;
+
+    while (heightLeft > 0) {
+      position = heightLeft - pageHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, pageWidth, pageHeight);
+      heightLeft -= 297;
+    }
+
+    pdf.save('DC_Motor_Health_Report.pdf');
+
+  } catch (err) {
+    console.error(err);
+    alert('حدث خطأ أثناء تصدير PDF');
+  }
+
+  if (btn) btn.style.display = oldDisplay;
+}
+/* CSV */
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('csvDrop').classList.remove('over');
+  var f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+}
+function handleFile(file) {
+  var ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'csv') {
+    var r = new FileReader();
+    r.onload = function(e) { parseCSV(e.target.result, file.name); };
+    r.readAsText(file, 'UTF-8');
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    var r2 = new FileReader();
+    r2.onload = function(e) {
+      var wb = XLSX.read(e.target.result, {type:'array'});
+      parseCSV(XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]]), file.name);
+    };
+    r2.readAsArrayBuffer(file);
+  }
+}
+function parseCSV(text, name) {
+  var res = Papa.parse(text, {header:true,skipEmptyLines:true,dynamicTyping:true});
+  if (!res.data.length) { alert('الملف فارغ'); return; }
+  csvRows = res.data; csvHdr = res.meta.fields || [];
+  showMap(name);
+}
+function loadSample() {
+  var rows = ['motor_id,motor_name,temperature,current,vibration,maint_days,maint_type,brush_state'];
+  MOTORS.forEach(function(m) {
+    var T = 60 + Math.round(Math.random() * 40);
+    var I = ((m.power * 1000 / m.volt) * (0.7 + Math.random() * 0.5)).toFixed(1);
+    var V = (1.5 + Math.random() * 8).toFixed(2);
+    var MD = Math.round(60 + Math.random() * 150);
+    rows.push(m.id + ',' + m.name + ',' + T + ',' + I + ',' + V + ',' + MD + ',partial,good');
+  });
+  parseCSV(rows.join('\n'), 'sample_18_motors.csv');
+}
+function am(h, kw) { return kw.some(function(k){ return h.toLowerCase().indexOf(k) >= 0; }); }
+function ss(id, v) {
+  var s = document.getElementById(id);
+  for (var i=0;i<s.options.length;i++) { if (s.options[i].value===v){s.value=v;return;} }
+}
+function showMap(name) {
+  document.getElementById('csvPill').innerHTML = '<div style="display:inline-block;background:var(--gr-bg);color:var(--gr);padding:4px 10px;border-radius:var(--rs);font-size:12px;font-family:var(--mn)">' + name + ' - ' + csvRows.length + ' صف</div>';
+  var opts = '<option value="--">-- لا يوجد --</option>' + csvHdr.map(function(h){return '<option value="'+h+'">'+h+'</option>';}).join('');
+  var flds = [
+    {id:'mp-mid',lbl:'معرف الموتور'},
+    {id:'mp-t',lbl:'الحرارة'},
+    {id:'mp-c',lbl:'التيار (A)'},
+    {id:'mp-v',lbl:'الاهتزاز (mm/s)'},
+    {id:'mp-md',lbl:'ايام الصيانة'},
+    {id:'mp-mt',lbl:'نوع الصيانة'},
+  ];
+  document.getElementById('mapGrid').innerHTML = flds.map(function(f){
+    return '<div class="map-c"><label>' + f.lbl + '</label><select id="' + f.id + '">' + opts + '</select></div>';
+  }).join('');
+  csvHdr.forEach(function(h) {
+    if (am(h,['motor_id','id','معرف','موتور'])) ss('mp-mid',h);
+    if (am(h,['temp','حرارة','درجة']))          ss('mp-t',h);
+    if (am(h,['curr','تيار','amp']))             ss('mp-c',h);
+    if (am(h,['vib','اهتزاز']))                  ss('mp-v',h);
+    if (am(h,['maint_day','days','أيام','mday'])) ss('mp-md',h);
+    if (am(h,['maint_type','type','نوع']))        ss('mp-mt',h);
+  });
+  var tbl = document.getElementById('csvPrev');
+  tbl.innerHTML = '<tr>' + csvHdr.map(function(h){return '<th>'+h+'</th>';}).join('') + '</tr>' +
+    csvRows.slice(0,4).map(function(r){ return '<tr>' + csvHdr.map(function(h){return '<td>'+(r[h]!=null?r[h]:'')+'</td>';}).join('') + '</tr>'; }).join('');
+  document.getElementById('csvMapWrap').style.display = 'block';
+}
+function gc(id) { var v=document.getElementById(id)&&document.getElementById(id).value; return (!v||v==='--')?null:v; }
+function processCSV() {
+  var midC=gc('mp-mid'),tC=gc('mp-t'),cC=gc('mp-c'),vC=gc('mp-v'),mdC=gc('mp-md'),mtC=gc('mp-mt');
+  var done = 0;
+  csvRows.forEach(function(row, ri) {
+    var T=parseFloat(row[tC]), I=parseFloat(row[cC]), V=parseFloat(row[vC]);
+    var MD=parseFloat(row[mdC])||90, MT=mtC?String(row[mtC]||'partial'):'partial';
+    if (isNaN(T)||isNaN(I)||isNaN(V)) return;
+    var mid = midC ? String(row[midC]||'') : '';
+    var mIdx = -1;
+    for (var i=0;i<MOTORS.length;i++) { if (MOTORS[i].id===mid||MOTORS[i].name===mid) { mIdx=i; break; } }
+    if (mIdx < 0) mIdx = done % 18;
+    var m = MOTORS[mIdx];
+    var res = calcHI(T,I,V,MD,m.mintv,MT,'good',m.power,m.volt);
+    m.readings.push({ hi:res.hi, temp:T, curr:I, vib:V, mdays:MD, mtype:MT, brush:'good', ts:Date.now(), sT:res.sT, sC:res.sC, sV:res.sV, sM:res.sM });
+    HIST.unshift({ motorId:m.id, motorName:m.name, hi:res.hi, temp:T, curr:I, vib:V, mdays:MD, mtype:MT, brush:'good', ts:Date.now(), sT:res.sT, sC:res.sC, sV:res.sV, sM:res.sM });
+    done++;
+  });
+  if (HIST.length>500) HIST.splice(500);
+  localStorage.setItem('fleet_hist', JSON.stringify(HIST));
+  saveMotors();
+  buildDash(); updHistFlt(); renderHist();
+  alert('تمت معالجة ' + done + ' قراءة.');
+  swTab('dashboard');
+}
+
+/* COMPARE */
+function dChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+function renderCompare() {
+  var wd = MOTORS.filter(function(m){return m.readings.length>0;});
+  if (!wd.length) return;
+  var lbls = wd.map(function(m){return m.id.replace('MTR-','');});
+  var his  = wd.map(function(m){return m.readings[m.readings.length-1].hi;});
+  var bgs  = his.map(function(h){return h>=70?'rgba(0,217,138,0.7)':h>=55?'rgba(255,168,32,0.7)':h>=40?'rgba(255,128,64,0.7)':'rgba(255,61,78,0.7)';});
+
+  dChart('cmpChart');
+  charts['cmpChart'] = new Chart(document.getElementById('cmpChart'), {
+    type:'bar',
+    data:{labels:lbls,datasets:[{label:'HI',data:his,backgroundColor:bgs,borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#3C4C64',font:{size:10,family:'IBM Plex Mono'}},grid:{color:'#1C2A3C'}},
+              y:{min:0,max:100,ticks:{color:'#3C4C64',font:{size:10}},grid:{color:'#1C2A3C'}}}}
+  });
+
+  var worst = wd.slice().sort(function(a,b){return a.readings[a.readings.length-1].hi - b.readings[b.readings.length-1].hi;}).slice(0,5);
+  var clrs = ['#FF3D4E','#FF8040','#FFA820','#00BFFF','#4A78FF'];
+  dChart('radChart');
+  charts['radChart'] = new Chart(document.getElementById('radChart'), {
+    type:'radar',
+    data:{
+      labels:['الحرارة','الاهتزاز','التيار','الصيانة'],
+      datasets: worst.map(function(m,i){
+        var r = m.readings[m.readings.length-1];
+        return {label:m.id, data:[Math.round(r.sT),Math.round(r.sV),Math.round(r.sC),Math.round(r.sM)],
+          backgroundColor:clrs[i]+'22', borderColor:clrs[i], pointBackgroundColor:clrs[i], pointRadius:3};
+      })
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{r:{min:0,max:100,ticks:{stepSize:25,color:'#3C4C64',font:{size:9}},grid:{color:'#1C2A3C'},angleLines:{color:'#1C2A3C'},pointLabels:{color:'#6878A0',font:{size:11}}}},
+      plugins:{legend:{display:true,labels:{color:'#6878A0',font:{size:10,family:'IBM Plex Mono'},boxWidth:10}}}}
+  });
+}
+
+/* HISTORY */
+function updHistFlt() {
+  var sel = document.getElementById('histFlt');
+  var cur = sel.value;
+  var ids = [];
+  HIST.forEach(function(r){ if (ids.indexOf(r.motorId)<0) ids.push(r.motorId); });
+  sel.innerHTML = '<option value="all">جميع الموتورات</option>' + ids.map(function(id){return '<option value="'+id+(id===cur?' selected':'')+'" >'+id+'</option>';}).join('');
+}
+function renderHist() {
+  var flt = document.getElementById('histFlt').value;
+  var rows = flt==='all' ? HIST : HIST.filter(function(r){return r.motorId===flt;});
+  var html = '';
+  rows.slice(0,100).forEach(function(r) {
+    var g = grade(r.hi);
+    html += '<tr>';
+    html += '<td>' + r.motorId + '</td>';
+    html += '<td>' + new Date(r.ts).toLocaleDateString('ar-SA') + '</td>';
+    html += '<td style="color:' + g.clr + ';font-weight:600">' + r.hi + '</td>';
+    html += '<td>' + r.temp + '</td>';
+    html += '<td>' + r.curr + '</td>';
+    html += '<td>' + r.vib + '</td>';
+    html += '<td>' + r.mdays + '</td>';
+    html += '<td style="color:' + g.clr + '">' + g.lbl + '</td>';
+    html += '</tr>';
+  });
+  document.getElementById('histBody').innerHTML = html || '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:2rem">لا توجد قراءات</td></tr>';
+}
+function clearAll() {
+  if (!confirm('مسح جميع قراءات الموتورات والسجل التاريخي؟')) return;
+  MOTORS.forEach(function(m){ m.readings = []; });
+  HIST.splice(0);
+  localStorage.removeItem('fleet_motors');
+  localStorage.removeItem('fleet_hist');
+  buildDash(); updHistFlt();
+}
+function clearHist() {
+  if (!confirm('مسح كل السجل؟')) return;
+  HIST.splice(0);
+  MOTORS.forEach(function(m){m.readings=[];});
+  localStorage.removeItem('fleet_hist');
+  buildDash(); renderHist(); updHistFlt();
+}
+function exportCSV() {
+  var rows = ['motor_id,motor_name,date,health_index,temperature,current,vibration,maint_days,status'];
+  HIST.forEach(function(r) {
+    rows.push([r.motorId, r.motorName, new Date(r.ts).toISOString(), r.hi, r.temp, r.curr, r.vib, r.mdays, grade(r.hi).lbl].join(','));
+  });
+  var blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'dc_motors_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+
+/* MODAL */
+function openModal(idx) {
+  var m = MOTORS[idx];
+  var last = m.readings.length ? m.readings[m.readings.length-1] : null;
+  var hi = last ? last.hi : null;
+  var g = hi !== null ? grade(hi) : null;
+  var brMap = {good:'جيدة',worn:'متآكلة',bad:'تالفة',replaced:'مستبدلة'};
+  var mtMap = {full:'شاملة',partial:'دورية',inspect:'فحص فقط',none:'لا يوجد'};
+  var html = '';
+  html += '<div style="margin-bottom:1rem;padding-bottom:1rem;border-bottom:0.5px solid var(--brd2)">';
+  html += '<div style="font-family:var(--mn);font-size:11px;color:var(--text3)">' + m.id + '</div>';
+  html += '<div style="font-size:20px;font-weight:700;color:var(--text);margin:4px 0">' + m.name + '</div>';
+  html += '<div style="font-size:13px;color:var(--text2)">' + m.location + ' - ' + m.power + ' kW - ' + m.volt + 'V DC</div>';
+  html += '</div>';
+  if (hi !== null) {
+    html += '<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">';
+    html += '<div style="font-family:var(--mn);font-size:48px;font-weight:600;color:' + g.clr + '">' + hi + '</div>';
+    html += '<div><div style="font-family:var(--mn);font-size:12px;padding:4px 12px;background:' + g.bg + ';color:' + g.tc + ';border-radius:var(--rs);display:inline-block">' + g.lbl + '</div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-top:6px">' + g.act + '</div></div>';
+    html += '</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:1rem">';
+    html += '<div style="background:var(--bg3);border-radius:var(--rs);padding:10px;text-align:center"><div style="font-family:var(--mn);font-size:16px;color:var(--text)">' + last.temp + '</div><div style="font-size:10px;color:var(--text3)">الحرارة</div></div>';
+    html += '<div style="background:var(--bg3);border-radius:var(--rs);padding:10px;text-align:center"><div style="font-family:var(--mn);font-size:16px;color:var(--text)">' + last.vib + ' mm/s</div><div style="font-size:10px;color:var(--text3)">الاهتزاز</div></div>';
+    html += '<div style="background:var(--bg3);border-radius:var(--rs);padding:10px;text-align:center"><div style="font-family:var(--mn);font-size:16px;color:var(--text)">' + last.curr + 'A</div><div style="font-size:10px;color:var(--text3)">التيار</div></div>';
+    html += '<div style="background:var(--bg3);border-radius:var(--rs);padding:10px;text-align:center"><div style="font-family:var(--mn);font-size:16px;color:var(--text)">' + last.mdays + ' يوم</div><div style="font-size:10px;color:var(--text3)">الصيانة</div></div>';
+    html += '</div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:1rem">فرش: ' + (brMap[last.brush]||last.brush) + ' - صيانة: ' + (mtMap[last.mtype]||last.mtype) + '</div>';
+  } else {
+    html += '<div style="color:var(--text2);font-size:13px;margin-bottom:1rem">لا توجد قراءات لهذا الموتور.</div>';
+  }
+  html += '<button class="btn btn-cy" onclick="closeModal();swTab(\'input\');selMotor(' + idx + ')">ادخال قراءة جديدة</button>';
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('motorModal').style.display = 'block';
+}
+function closeModal() { document.getElementById('motorModal').style.display = 'none'; }
+</script>
+</body>
+</html>
